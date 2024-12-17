@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Soil Analysis</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+
+<body class="bg-gray-100 min-h-screen p-4">
+    <div class="max-w-2xl mx-auto">
+        <div class="bg-white rounded-lg shadow-md p-6">
+            <h1 class="text-2xl font-bold mb-6">Crop Analysis</h1>
+
+            <form id="soilForm" class="space-y-6">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium mb-1">pH Level</label>
+                        <input type="number" name="ph" step="0.1" min="0" max="14" required
+                            class="w-full px-3 py-2 border rounded-md" placeholder="Enter pH (0-14)">
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium mb-1">Nitrogen (N)</label>
+                        <input type="number" name="nitrogen" min="0" max="100" required
+                            class="w-full px-3 py-2 border rounded-md" placeholder="Enter N value (0-100)">
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium mb-1">Phosphorus (P)</label>
+                        <input type="number" name="phosphorus" min="0" max="100" required
+                            class="w-full px-3 py-2 border rounded-md" placeholder="Enter P value (0-100)">
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium mb-1">Potassium (K)</label>
+                        <input type="number" name="potassium" min="0" max="100" required
+                            class="w-full px-3 py-2 border rounded-md" placeholder="Enter K value (0-100)">
+                    </div>
+                </div>
+
+                <button type="submit"
+                    class="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 transition-colors">
+                    Analyze Soil
+                </button>
+            </form>
+
+            <!-- Error Alert -->
+            <div id="errorAlert" class="hidden mt-4 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
+            </div>
+
+            <!-- Results Section -->
+            <div id="results" class="hidden mt-6">
+                <h2 class="text-lg font-semibold mb-4">Recommended Crops:</h2>
+                <div id="recommendationsList" class="space-y-2"></div>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+
+
+        const defaltCrops = [{ 'crop': 'Carrots', 'confidence': 0.0 }, { 'crop': 'Potatoes', 'confidence': 0.0 }, { 'crop': 'Onions', 'confidence': 0.0 }, { 'crop': 'Tomatoes', 'confidence': 0.0 }, { 'crop': 'Cotton', 'confidence': 0.0 }, { 'crop': 'Sugarcane', 'confidence': 0.0 }, { 'crop': 'Soybeans', 'confidence': 0.0 }, { 'crop': 'Maize', 'confidence': 0.0 }, { 'crop': 'Wheat', 'confidence': 0.0 }, { 'crop': 'Rice', 'confidence': 0.0 }]
+
+        document.getElementById('soilForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            if (e.target.ph.value == 0 && e.target.nitrogen.value == 0 && e.target.phosphorus.value == 0 && e.target.potassium.value == 0) {
+                const resultsList = document.getElementById('recommendationsList');
+                resultsList.innerHTML = '';
+
+                
+                defaltCrops.forEach(rec => {
+                    const div = document.createElement('div');
+                    div.className = 'p-4 bg-gray-50 rounded-lg flex justify-between items-center';
+                    div.innerHTML = `
+                        <span class="font-medium">${rec.crop}</span>
+                        <span class="text-sm text-gray-600">${rec.confidence}% confidence</span>
+                    `;
+                    resultsList.appendChild(div);
+                });
+
+                document.getElementById('results').classList.remove('hidden');
+                return;
+            }
+
+            // Hide previous results and errors
+            document.getElementById('results').classList.add('hidden');
+            document.getElementById('errorAlert').classList.add('hidden');
+
+            // Get form data
+            const formData = {
+                ph: parseFloat(e.target.ph.value),
+                nitrogen: parseFloat(e.target.nitrogen.value),
+                phosphorus: parseFloat(e.target.phosphorus.value),
+                potassium: parseFloat(e.target.potassium.value)
+            };
+
+            try {
+                // Send request to backend
+                const response = await fetch('http://localhost:5000/predict', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(formData)
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.error || 'Failed to analyze soil data');
+                }
+
+                // Display results
+                const resultsList = document.getElementById('recommendationsList');
+                resultsList.innerHTML = '';
+
+                data.recommendations.forEach(rec => {
+                    const div = document.createElement('div');
+                    div.className = 'p-4 bg-gray-50 rounded-lg flex justify-between items-center';
+                    div.innerHTML = `
+                        <span class="font-medium">${rec.crop}</span>
+                        <span class="text-sm text-gray-600">${rec.confidence}% confidence</span>
+                    `;
+                    resultsList.appendChild(div);
+                });
+
+                document.getElementById('results').classList.remove('hidden');
+
+            } catch (error) {
+                const errorAlert = document.getElementById('errorAlert');
+                errorAlert.textContent = error.message;
+                errorAlert.classList.remove('hidden');
+            }
+        });
+    </script>
+</body>
+
+</html>
